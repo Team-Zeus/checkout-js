@@ -1,23 +1,23 @@
-import { CardInstrument, LanguageService, PaymentMethod } from '@bigcommerce/checkout-sdk';
+import { CardInstrument, CheckoutSettings, LanguageService, PaymentMethod } from '@bigcommerce/checkout-sdk';
 import { number } from 'card-validator';
 import { compact } from 'lodash';
 import React, { FunctionComponent, memo, ReactNode } from 'react';
 
 import { withLanguage, WithLanguageProps } from '@bigcommerce/checkout/locale';
 import { CheckoutContextProps , PaymentFormValues } from '@bigcommerce/checkout/payment-integration-api';
+import { BraintreePaypalCreditBanner, PaypalCommerceCreditBanner } from '@bigcommerce/checkout/paypal-utils';
 
 import { withCheckout } from '../../checkout';
 import { connectFormik, ConnectFormikProps } from '../../common/form';
+import { isExperimentEnabled } from '../../common/utility';
 import { CreditCardIconList, mapFromPaymentMethodCardType } from '../creditCard';
 
-import BraintreePaypalCreditDescription from './BraintreePaypalCreditDescription';
 import { hasCreditCardNumber } from './CreditCardFieldsetValues';
 import getPaymentMethodDisplayName from './getPaymentMethodDisplayName';
 import getPaymentMethodName from './getPaymentMethodName';
 import { isHostedCreditCardFieldsetValues } from './HostedCreditCardFieldsetValues';
 import PaymentMethodId from './PaymentMethodId';
 import PaymentMethodType from './PaymentMethodType';
-import PaypalCommerceCreditDescription from './PaypalCommerceCreditDescription';
 
 export interface PaymentMethodTitleProps {
     method: PaymentMethod;
@@ -27,12 +27,16 @@ export interface PaymentMethodTitleProps {
 
 interface WithPaymentTitleProps {
     instruments: CardInstrument[];
+    checkoutSettings: CheckoutSettings;
+    storeCountryCode: string;
     cdnBasePath: string;
 }
 
 function getPaymentMethodTitle(
     language: LanguageService,
     basePath: string,
+    checkoutSettings: CheckoutSettings,
+    storeCountryCode: string,
 ): (method: PaymentMethod) => {
     logoUrl: string;
     titleText: string,
@@ -60,7 +64,7 @@ function getPaymentMethodTitle(
             [PaymentMethodId.BraintreePaypalCredit]: {
                 logoUrl: cdnPath('/img/payment-providers/paypal_commerce_logo_letter.svg'),
                 titleText: methodDisplayName,
-                subtitle: (props: { onUnhandledError?(error: Error): void }) => <BraintreePaypalCreditDescription {...props} />
+                subtitle: (props: { onUnhandledError?(error: Error): void }) => <BraintreePaypalCreditBanner {...props} />
             },
             [PaymentMethodType.PaypalCredit]: {
                 logoUrl: cdnPath('/img/payment-providers/paypal_commerce_logo_letter.svg'),
@@ -81,7 +85,7 @@ function getPaymentMethodTitle(
             [PaymentMethodId.PaypalCommerceCredit]: {
                 logoUrl: cdnPath('/img/payment-providers/paypal_commerce_logo_letter.svg'),
                 titleText: methodDisplayName,
-                subtitle: (props: { onUnhandledError?(error: Error): void }) => <PaypalCommerceCreditDescription {...props} />
+                subtitle: (props: { onUnhandledError?(error: Error): void }) => <PaypalCommerceCreditBanner {...props} />
             },
             [PaymentMethodId.PaypalCommerceAlternativeMethod]: {
                 logoUrl: method.logoUrl || '',
@@ -96,7 +100,7 @@ function getPaymentMethodTitle(
                 titleText: language.translate('payment.affirm_display_name_text'),
             },
             [PaymentMethodId.Afterpay]: {
-                logoUrl: cdnPath('/img/payment-providers/afterpay-badge-blackonmint.png'),
+                logoUrl: isExperimentEnabled(checkoutSettings, 'PROJECT-6993.change_afterpay_logo_for_us_stores') && storeCountryCode === 'US' ? cdnPath('/img/payment-providers/afterpay-new-us.svg') : cdnPath('/img/payment-providers/afterpay-badge-blackonmint.png'),
                 titleText: methodName,
             },
             [PaymentMethodId.AmazonPay]: {
@@ -276,9 +280,9 @@ const PaymentMethodTitle: FunctionComponent<
         WithLanguageProps &
         WithPaymentTitleProps &
         ConnectFormikProps<PaymentFormValues>
-> = ({ cdnBasePath, onUnhandledError, formik: { values }, instruments, isSelected, language, method }) => {
+> = ({ cdnBasePath, checkoutSettings, storeCountryCode, onUnhandledError, formik: { values }, instruments, isSelected, language, method }) => {
     const methodName = getPaymentMethodName(language)(method);
-    const { logoUrl, titleText, subtitle } = getPaymentMethodTitle(language, cdnBasePath)(method);
+    const { logoUrl, titleText, subtitle } = getPaymentMethodTitle(language, cdnBasePath, checkoutSettings, storeCountryCode)(method);
 
     const getSelectedCardType = () => {
         if (!isSelected) {
@@ -359,8 +363,12 @@ function mapToCheckoutProps({ checkoutState }: CheckoutContextProps): WithPaymen
         return null;
     }
 
+    const storeCountryCode = config.storeProfile.storeCountryCode
+
     return {
         instruments,
+        checkoutSettings: config.checkoutSettings,
+        storeCountryCode,
         cdnBasePath: config.cdnPath,
     };
 }

@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import React from 'react';
 
 import { ExtensionProvider } from '@bigcommerce/checkout/checkout-extension';
-import { createLocaleContext, LocaleContext, LocaleContextType } from '@bigcommerce/checkout/locale';
+import { createLocaleContext, LocaleContext } from '@bigcommerce/checkout/locale';
 import { CheckoutProvider } from '@bigcommerce/checkout/payment-integration-api';
 import { render, screen } from '@bigcommerce/checkout/test-utils';
 
@@ -46,7 +46,7 @@ describe('SingleShippingForm', () => {
     const waitingDelay = shippingAutosaveDelay * 1.1;
 
     const createSingleShippingFormComponent = (props?: Partial<SingleShippingFormProps>) => {
-        const localeContext: LocaleContextType = createLocaleContext(getStoreConfig());
+        const localeContext = createLocaleContext(getStoreConfig());
 
         return (
             <CheckoutProvider checkoutService={checkoutService}>
@@ -227,31 +227,6 @@ describe('SingleShippingForm', () => {
                 },
             },
         );
-    });
-
-    it('calls updateAddress when address is updated but form is rendered before its initial value is loaded', async () => {
-        const updateAddress = jest.fn();
-        const { rerender } = renderSingleShippingFormComponent({
-            updateAddress,
-            isInitialValueLoaded: false,
-            countries: [],
-            getFields: jest.fn(() => []),
-        });
-
-        rerender(createSingleShippingFormComponent({
-            updateAddress,
-            isInitialValueLoaded: true,
-        }));
-
-        await userEvent.clear(screen.getByTestId('addressLine1Input-text'));
-        await userEvent.keyboard('foo 1');
-
-        await userEvent.clear(screen.getByTestId('addressLine1Input-text'));
-        await userEvent.keyboard('foo 2');
-
-        await new Promise((resolve) => setTimeout(resolve, waitingDelay));
-
-        expect(updateAddress).toHaveBeenCalled();
     });
 
     it('does not call updateAddress if modified field produces invalid address', async () => {
