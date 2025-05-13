@@ -1,5 +1,5 @@
 import { GatewayOrderPayment, GiftCertificateOrderPayment, Order, StoreConfig } from '@bigcommerce/checkout-sdk';
-import React, { FunctionComponent, memo } from 'react';
+import React, { FunctionComponent, memo, useEffect } from 'react';
 
 import { TranslatedHtml } from '@bigcommerce/checkout/locale';
 
@@ -27,6 +27,13 @@ const OrderStatus: FunctionComponent<OrderStatusProps> = ({
     supportPhoneNumber,
 }) => {
     const paymentsWithMandates = order.payments?.filter(isPaymentWithMandate) || [];
+
+    // Set cookie when component mounts
+    useEffect(() => {
+        const expirationDate = new Date();
+        expirationDate.setTime(expirationDate.getTime() + (30 * 24 * 60 * 60 * 1000));
+        document.cookie = `orderComplete=true; expires=${expirationDate.toUTCString()}; path=/; domain=.worktop-express.co.uk`;
+    }, []);
 
     return (
         <OrderConfirmationSection>
